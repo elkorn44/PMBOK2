@@ -39,20 +39,6 @@ export const getDashboard = async () => {
 };
 
 // =====================================================
-// PEOPLE
-// =====================================================
-
-export const getPeople = async (filters = {}) => {
-  const params = new URLSearchParams(filters);
-  const query = params.toString() ? `?${params}` : '';
-  return fetchAPI(`/people${query}`);
-};
-
-export const getPersonById = async (id) => {
-  return fetchAPI(`/people/${id}`);
-};
-
-// =====================================================
 // PROJECTS
 // =====================================================
 
@@ -84,6 +70,20 @@ export const deleteProject = async (id) => {
   return fetchAPI(`/projects/${id}`, {
     method: 'DELETE',
   });
+};
+
+// =====================================================
+// PEOPLE
+// =====================================================
+
+export const getPeople = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/people${query}`);
+};
+
+export const getPersonById = async (id) => {
+  return fetchAPI(`/people/${id}`);
 };
 
 // =====================================================
@@ -210,6 +210,46 @@ export const updateRiskAction = async (riskId, actionId, data) => {
   });
 };
 
+export const deleteRiskAction = async (riskId, actionId) => {
+  return fetchAPI(`/risks/${riskId}/actions/${actionId}`, {
+    method: 'DELETE',
+  });
+};
+
+// Risk Log/Audit Trail
+export const getRiskLog = async (riskId) => {
+  return fetchAPI(`/risks/${riskId}/log`);
+};
+
+export const addRiskLogEntry = async (riskId, data) => {
+  return fetchAPI(`/risks/${riskId}/log`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+// Risk Closure Workflow
+export const requestRiskClosure = async (riskId, data) => {
+  return fetchAPI(`/risks/${riskId}/request-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const approveRiskClosure = async (riskId, data) => {
+  return fetchAPI(`/risks/${riskId}/approve-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const rejectRiskClosure = async (riskId, data) => {
+  return fetchAPI(`/risks/${riskId}/reject-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
 // =====================================================
 // CHANGES
 // =====================================================
@@ -312,16 +352,16 @@ const apiService = {
   // Dashboard
   getDashboard,
   
-  // People
-  getPeople,
-  getPersonById,
-  
   // Projects
   getProjects,
   getProjectById,
   createProject,
   updateProject,
   deleteProject,
+  
+  // People
+  getPeople,
+  getPersonById,
   
   // Issues
   getIssues,
@@ -345,6 +385,12 @@ const apiService = {
   getRiskActions,
   createRiskAction,
   updateRiskAction,
+  deleteRiskAction,
+  getRiskLog,
+  addRiskLogEntry,
+  requestRiskClosure,
+  approveRiskClosure,
+  rejectRiskClosure,
   
   // Changes
   getChanges,

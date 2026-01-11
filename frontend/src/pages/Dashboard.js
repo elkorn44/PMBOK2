@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
-import apiService from '../services/apiService';
+import apiService from '../services/api';
 import { testLocale } from '../utils/testLocale';
 
 function Dashboard() {

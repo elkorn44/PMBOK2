@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, Plus, Search, X, Eye, Edit, CheckCircle, Trash2 } from 'lucide-react';
-import apiService from '../services/apiService';
+import apiService from '../services/api';
+import { useProject } from '../context/ProjectContext';
 import { formatDate, formatDateTime, getTodayForInput, getFutureDateForInput } from '../utils/dateFormat';
 
 function Issues() {
+  // Get selected project from context
+  const { selectedProject, getSelectedProjectName } = useProject();
+  
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,6 +62,7 @@ function Issues() {
       if (searchTerm) filters.search = searchTerm;
       if (statusFilter) filters.status = statusFilter;
       if (priorityFilter) filters.priority = priorityFilter;
+      if (selectedProject) filters.project_id = selectedProject;
       
       const response = await apiService.getIssues(filters);
       setIssues(response.data || []);
@@ -68,7 +73,7 @@ function Issues() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter, priorityFilter]);
+  }, [searchTerm, statusFilter, priorityFilter, selectedProject]);
 
   useEffect(() => {
     fetchIssues();
@@ -193,6 +198,11 @@ function Issues() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Issues</h1>
           <p className="mt-2 text-gray-600">Track and manage project issues</p>
+          {selectedProject && (
+            <p className="text-sm text-gray-600 mt-1">
+              Project: <span className="font-semibold text-gray-900">{getSelectedProjectName()}</span>
+            </p>
+          )}
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -367,6 +377,7 @@ function Issues() {
         show={showCreateModal}
         people={people}
         projects={projects}
+        selectedProject={selectedProject}
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => {
           setShowCreateModal(false);
@@ -444,7 +455,7 @@ function Issues() {
 }
 
 // Create Issue Modal Component
-function CreateIssueModal({ show, people, projects, onClose, onSuccess }) {
+function CreateIssueModal({ show, people, projects, selectedProject, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     issue_number: `ISS-${Date.now()}`,
     title: '',
@@ -455,9 +466,17 @@ function CreateIssueModal({ show, people, projects, onClose, onSuccess }) {
     raised_by: '',
     assigned_to: '',
     raised_date: getTodayForInput(),
-    project_id: ''
+    project_id: selectedProject || ''
   });
   const [loading, setLoading] = useState(false);
+
+  // Update project_id when selectedProject changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      project_id: selectedProject || prev.project_id
+    }));
+  }, [selectedProject]);
 
   // Set default project if only one exists
   useEffect(() => {
@@ -489,7 +508,7 @@ function CreateIssueModal({ show, people, projects, onClose, onSuccess }) {
         raised_by: '',
         assigned_to: '',
         raised_date: getTodayForInput(),
-        project_id: projects.length === 1 ? projects[0].project_id : ''
+        project_id: selectedProject || (projects.length === 1 ? projects[0].project_id : '')
       });
     } catch (err) {
       console.error('Error creating issue:', err);
@@ -635,6 +654,17 @@ function CreateIssueModal({ show, people, projects, onClose, onSuccess }) {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Raised Date *</label>
+            <input
+              type="date"
+              value={formData.raised_date}
+              onChange={(e) => setFormData({ ...formData, raised_date: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
@@ -858,6 +888,8 @@ function EditIssueModal({ show, issue, people, projects, onClose, onSuccess }) {
         priority: issue.priority || 'Medium',
         status: issue.status || 'Open',
         category: issue.category || '',
+        raised_by: issue.raised_by || '',
+        raised_date: issue.raised_date || '',
         assigned_to: issue.assigned_to || '',
         target_resolution_date: issue.target_resolution_date || '',
         impact: issue.impact || '',
@@ -873,6 +905,7 @@ function EditIssueModal({ show, issue, people, projects, onClose, onSuccess }) {
     try {
       await apiService.updateIssue(issue.issue_id, {
         ...formData,
+        raised_by: formData.raised_by ? parseInt(formData.raised_by) : null,
         assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
         project_id: formData.project_id ? parseInt(formData.project_id) : undefined,
         updated_by: 1
@@ -977,6 +1010,34 @@ function EditIssueModal({ show, issue, people, projects, onClose, onSuccess }) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="e.g., Performance, Security, UI"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Raised By</label>
+              <select
+                value={formData.raised_by}
+                onChange={(e) => setFormData({ ...formData, raised_by: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select person...</option>
+                {people.map(person => (
+                  <option key={person.person_id} value={person.person_id}>
+                    {person.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Raised Date</label>
+              <input
+                type="date"
+                value={formData.raised_date}
+                onChange={(e) => setFormData({ ...formData, raised_date: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
           <div>
