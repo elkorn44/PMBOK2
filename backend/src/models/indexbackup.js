@@ -395,12 +395,10 @@ const Fault = sequelize.define('Fault', {
     allowNull: false
   },
   target_fix_date: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
+    type: DataTypes.DATEONLY
   },
   actual_fix_date: {
-    type: DataTypes.DATEONLY,
-    allowNull: true
+    type: DataTypes.DATEONLY
   },
   root_cause: {
     type: DataTypes.TEXT

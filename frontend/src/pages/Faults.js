@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, Plus, Search, X, Eye, Edit, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Search, X, Eye, Edit, Trash2, Check, XCircle } from 'lucide-react';
 import apiService from '../services/api';
 import { useProject } from '../context/ProjectContext';
 import { formatDate, formatDateTime, getTodayForInput } from '../utils/dateFormat';
 
+// CAUTION: Always use (val === "" ? null : val) for dates to avoid SQL 500 errors.
+
 function Faults() {
-  // Get selected project from context
   const { selectedProject, getSelectedProjectName } = useProject();
   
   const [faults, setFaults] = useState([]);
@@ -18,6 +19,7 @@ function Faults() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState('');
+  const [faultTypeFilter, setFaultTypeFilter] = useState('');
   
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,20 +53,18 @@ function Faults() {
     fetchProjects();
   }, []);
 
-  // Fetch faults with filters
+  // Fetch faults
   const fetchFaults = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching faults for project:', selectedProject || 'All');
-      
       const filters = {};
       if (searchTerm) filters.search = searchTerm;
       if (statusFilter) filters.status = statusFilter;
       if (severityFilter) filters.severity = severityFilter;
+      if (faultTypeFilter) filters.fault_type = faultTypeFilter;
       if (selectedProject) filters.project_id = selectedProject;
       
       const response = await apiService.getFaults(filters);
-      
       let faultsArray = [];
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
         faultsArray = response.data.data;
@@ -74,7 +74,6 @@ function Faults() {
         faultsArray = response;
       }
       
-      console.log('✅ Loaded', faultsArray.length, 'faults');
       setFaults(faultsArray);
       setError(null);
     } catch (err) {
@@ -83,13 +82,12 @@ function Faults() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter, severityFilter, selectedProject]);
+  }, [searchTerm, statusFilter, severityFilter, faultTypeFilter, selectedProject]);
 
   useEffect(() => {
     fetchFaults();
   }, [fetchFaults]);
 
-  // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm !== undefined) {
@@ -118,8 +116,8 @@ function Faults() {
         status: newStatus,
         updated_by: 1 
       });
-      
       await viewFaultDetails(faultId);
+      await fetchFaults();
     } catch (err) {
       console.error('Error updating status:', err);
       alert('Failed to update status');
@@ -128,7 +126,7 @@ function Faults() {
 
   // Delete fault
   const deleteFault = async (faultId) => {
-    if (!window.confirm('Are you sure you want to delete this fault? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this fault? This will also delete all associated actions and log entries.')) {
       return;
     }
     
@@ -144,33 +142,30 @@ function Faults() {
     }
   };
 
-  // Get severity color
   const getSeverityColor = (severity) => {
     const colors = {
-      'Very Low': 'bg-gray-100 text-gray-800 border-gray-200',
-      'Low': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Medium': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'High': 'bg-orange-100 text-orange-800 border-orange-200',
-      'Critical': 'bg-red-100 text-red-800 border-red-200'
+      'Minor': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Major': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'Critical': 'bg-red-100 text-red-800 border-red-200',
+      'Blocking': 'bg-purple-100 text-purple-800 border-purple-200'
     };
     return colors[severity] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  // Get status color
   const getStatusColor = (status) => {
     const colors = {
-      'Open': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Reported': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Investigating': 'bg-indigo-100 text-indigo-800 border-indigo-200',
       'In Progress': 'bg-yellow-100 text-yellow-800 border-yellow-200',
       'Resolved': 'bg-green-100 text-green-800 border-green-200',
       'Closed': 'bg-gray-100 text-gray-800 border-gray-200',
-      'Reopened': 'bg-orange-100 text-orange-800 border-orange-200'
+      'Deferred': 'bg-orange-100 text-orange-800 border-orange-200'
     };
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Fault Management</h1>
@@ -190,7 +185,6 @@ function Faults() {
         </button>
       </div>
 
-      {/* Error Display */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex justify-between items-center">
           <span className="text-red-800">{error}</span>
@@ -200,7 +194,6 @@ function Faults() {
         </div>
       )}
 
-      {/* Filters Bar */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -222,11 +215,12 @@ function Faults() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
           >
             <option value="">All Statuses</option>
-            <option value="Open">Open</option>
+            <option value="Reported">Reported</option>
+            <option value="Investigating">Investigating</option>
             <option value="In Progress">In Progress</option>
             <option value="Resolved">Resolved</option>
             <option value="Closed">Closed</option>
-            <option value="Reopened">Reopened</option>
+            <option value="Deferred">Deferred</option>
           </select>
 
           <select
@@ -235,16 +229,27 @@ function Faults() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
           >
             <option value="">All Severities</option>
-            <option value="Very Low">Very Low</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
+            <option value="Minor">Minor</option>
+            <option value="Major">Major</option>
             <option value="Critical">Critical</option>
+            <option value="Blocking">Blocking</option>
+          </select>
+
+          <select
+            value={faultTypeFilter}
+            onChange={(e) => setFaultTypeFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">All Fault Types</option>
+            <option value="Hardware">Hardware</option>
+            <option value="Software">Software</option>
+            <option value="Network">Network</option>
+            <option value="Configuration">Configuration</option>
+            <option value="Process">Process</option>
           </select>
         </div>
       </div>
 
-      {/* Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-2xl font-bold text-gray-900">{faults.length}</p>
@@ -252,19 +257,19 @@ function Faults() {
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-2xl font-bold text-red-600">
-            {faults.filter(f => f.severity === 'Critical').length}
+            {faults.filter(f => f.severity === 'Critical' || f.severity === 'Blocking').length}
           </p>
-          <p className="text-sm text-gray-600">Critical</p>
+          <p className="text-sm text-gray-600">Critical/Blocking</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-2xl font-bold text-blue-600">
-            {faults.filter(f => f.status === 'Open').length}
+            {faults.filter(f => f.status === 'Reported').length}
           </p>
-          <p className="text-sm text-gray-600">Open</p>
+          <p className="text-sm text-gray-600">Reported</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-2xl font-bold text-yellow-600">
-            {faults.filter(f => f.status === 'In Progress').length}
+            {faults.filter(f => f.status === 'In Progress' || f.status === 'Investigating').length}
           </p>
           <p className="text-sm text-gray-600">In Progress</p>
         </div>
@@ -276,7 +281,6 @@ function Faults() {
         </div>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="text-center py-12">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
@@ -284,41 +288,30 @@ function Faults() {
         </div>
       )}
 
-      {/* Faults Table */}
       {!loading && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fault
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Severity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Identified
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fault</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reported</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {faults.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                    {searchTerm || statusFilter || severityFilter || selectedProject
+                    {searchTerm || statusFilter || severityFilter || faultTypeFilter || selectedProject
                       ? 'No faults match your filters'
                       : 'No faults found. Create your first fault!'}
                   </td>
                 </tr>
               ) : (
                 faults.map((fault) => (
-                  <tr key={fault.fault_id} className="hover:bg-gray-50">
+                  <tr key={fault.fault_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => viewFaultDetails(fault.fault_id)}>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{fault.title}</div>
                       <div className="text-sm text-gray-500">{fault.fault_number}</div>
@@ -334,11 +327,14 @@ function Faults() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(fault.identified_date)}
+                      {formatDate(fault.reported_date)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        onClick={() => viewFaultDetails(fault.fault_id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          viewFaultDetails(fault.fault_id);
+                        }}
                         className="text-red-600 hover:text-red-900"
                         title="View Details"
                       >
@@ -353,7 +349,6 @@ function Faults() {
         </div>
       )}
 
-      {/* Modals */}
       <CreateFaultModal
         show={showCreateModal}
         people={people}
@@ -406,19 +401,21 @@ function Faults() {
   );
 }
 
-// Create Fault Modal Component
+// Create Fault Modal
 function CreateFaultModal({ show, people, projects, selectedProject, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     fault_number: `FLT-${Date.now()}`,
     title: '',
     description: '',
-    severity: 'Medium',
-    status: 'Open',
-    category: '',
-    identified_by: '',
-    identified_date: getTodayForInput(),
+    severity: 'Major',
+    status: 'Reported',
+    fault_type: '',
+    assigned_to: '',
+    reported_by: '',
+    reported_date: getTodayForInput(),
+    target_fix_date: null,
     root_cause: '',
-    corrective_action: '',
+    resolution: '',
     project_id: selectedProject || ''
   });
   const [loading, setLoading] = useState(false);
@@ -443,7 +440,8 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
     try {
       await apiService.createFault({
         ...formData,
-        identified_by: formData.identified_by ? parseInt(formData.identified_by) : null,
+        reported_by: formData.reported_by ? parseInt(formData.reported_by) : null,
+        assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
         project_id: formData.project_id ? parseInt(formData.project_id) : null,
       });
       onSuccess();
@@ -451,18 +449,20 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
         fault_number: `FLT-${Date.now()}`,
         title: '',
         description: '',
-        severity: 'Medium',
-        status: 'Open',
-        category: '',
-        identified_by: '',
-        identified_date: getTodayForInput(),
+        severity: 'Major',
+        status: 'Reported',
+        fault_type: '',
+        assigned_to: '',
+        reported_by: '',
+        reported_date: getTodayForInput(),
+        target_fix_date: null,
         root_cause: '',
-        corrective_action: '',
+        resolution: '',
         project_id: selectedProject || (projects.length === 1 ? projects[0].project_id : '')
       });
     } catch (err) {
       console.error('Error creating fault:', err);
-      alert('Failed to create fault');
+      alert('Failed to create fault: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -483,12 +483,7 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fault Number</label>
-            <input
-              type="text"
-              value={formData.fault_number}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
-              readOnly
-            />
+            <input type="text" value={formData.fault_number} className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readOnly />
           </div>
 
           {projects.length > 1 && (
@@ -500,11 +495,9 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                 required
               >
-                <option value="">Select project...</option>
+                <option value="" disabled>Select project...</option>
                 {projects.map(project => (
-                  <option key={project.project_id} value={project.project_id}>
-                    {project.project_name}
-                  </option>
+                  <option key={project.project_id} value={project.project_id}>{project.project_name}</option>
                 ))}
               </select>
             </div>
@@ -540,20 +533,19 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                 required
               >
-                <option value="Very Low">Very Low</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+                <option value="Minor">Minor</option>
+                <option value="Major">Major</option>
                 <option value="Critical">Critical</option>
+                <option value="Blocking">Blocking</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fault Type</label>
               <input
                 type="text"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                value={formData.fault_type}
+                onChange={(e) => setFormData({ ...formData, fault_type: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                 placeholder="e.g., Hardware, Software, Network"
               />
@@ -562,32 +554,73 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Identified By *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reported By *</label>
               <select
-                value={formData.identified_by}
-                onChange={(e) => setFormData({ ...formData, identified_by: e.target.value })}
+                value={formData.reported_by}
+                onChange={(e) => setFormData({ ...formData, reported_by: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                 required
               >
                 <option value="">Select person...</option>
                 {people.map(person => (
-                  <option key={person.person_id} value={person.person_id}>
-                    {person.full_name}
-                  </option>
+                  <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Identified Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reported Date *</label>
               <input
                 type="date"
-                value={formData.identified_date}
-                onChange={(e) => setFormData({ ...formData, identified_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                value={formData.reported_date || ''} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If cleared, snap back to today's date string
+                    reported_date: val === "" ? getTodayForInput() : val 
+                  });
+                }}
+                className="..."
                 required
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+              <select
+                value={formData.assigned_to}
+                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">Not assigned</option>
+                {people.map(person => (
+                  <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Target Fix Date</label>
+              <input
+                type="date"
+                // 1. The Safety Valve for the Display: if null, show empty string
+                value={formData.target_fix_date || ''} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // 2. The Safety Valve for the Database: if empty, send null
+                  setFormData({ 
+                    ...formData, 
+                    target_fix_date: val === "" ? null : val 
+                  });
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+
           </div>
 
           <div>
@@ -597,18 +630,16 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
               onChange={(e) => setFormData({ ...formData, root_cause: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               rows="2"
-              placeholder="Describe the root cause of the fault..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Corrective Action</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Resolution</label>
             <textarea
-              value={formData.corrective_action}
-              onChange={(e) => setFormData({ ...formData, corrective_action: e.target.value })}
+              value={formData.resolution}
+              onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               rows="2"
-              placeholder="Describe the corrective action taken..."
             />
           </div>
 
@@ -634,61 +665,176 @@ function CreateFaultModal({ show, people, projects, selectedProject, onClose, on
   );
 }
 
-// Fault Detail Modal Component
+// Fault Detail Modal with Actions CRUD
 function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, onEdit, onRefresh }) {
+  const [actions, setActions] = useState([]);
   const [log, setLog] = useState([]);
+  const [loadingActions, setLoadingActions] = useState(false);
   const [loadingLog, setLoadingLog] = useState(false);
-  const [newLogEntry, setNewLogEntry] = useState('');
-  const [addingLog, setAddingLog] = useState(false);
+  
+  // Add/Edit action state
+  const [showAddAction, setShowAddAction] = useState(false);
+  const [editingActionId, setEditingActionId] = useState(null);
+  const [actionFormData, setActionFormData] = useState({
+    action_description: '',
+    action_type: '',
+    assigned_to: '',
+    created_by: 1,
+    created_date: getTodayForInput(),
+    due_date: '',
+    status: 'Pending',
+    priority: 'Medium',
+    notes: ''
+  });
 
-  // Fetch log entries
-  useEffect(() => {
-    const fetchLog = async () => {
-      try {
-        setLoadingLog(true);
-        const response = await apiService.getFaultLog(fault.fault_id);
-        setLog(response.data || []);
-      } catch (err) {
-        console.error('Error fetching log:', err);
-      } finally {
-        setLoadingLog(false);
-      }
-    };
-    fetchLog();
-  }, [fault.fault_id]);
-
-  // Add log entry
-  const addLogEntry = async (e) => {
-    e.preventDefault();
-    if (!newLogEntry.trim()) return;
-    
-    setAddingLog(true);
+  // Fetch actions
+  const fetchActions = async () => {
     try {
-      await apiService.addFaultLogEntry(fault.fault_id, {
-        logged_by: 1,
-        comments: newLogEntry
-      });
-      
-      const response = await apiService.getFaultLog(fault.fault_id);
-      setLog(response.data || []);
-      setNewLogEntry('');
+      setLoadingActions(true);
+      const response = await apiService.getFaultActions(fault.fault_id);
+      setActions(response.data || []);
     } catch (err) {
-      console.error('Error adding log entry:', err);
-      alert('Failed to add log entry');
+      console.error('Error fetching actions:', err);
     } finally {
-      setAddingLog(false);
+      setLoadingActions(false);
     }
   };
 
+  // Fetch log
+  const fetchLog = async () => {
+    try {
+      setLoadingLog(true);
+      const response = await apiService.getFaultLog(fault.fault_id);
+      setLog(response.data || []);
+    } catch (err) {
+      console.error('Error fetching log:', err);
+    } finally {
+      setLoadingLog(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActions();
+    fetchLog();
+  }, [fault.fault_id]);
+
   // Get person name
   const getPersonName = (personId) => {
+    if (!personId) return 'Not assigned';
     const person = people.find(p => p.person_id === personId);
     return person ? person.full_name : 'Unknown';
   };
 
+  // Reset action form
+  const resetActionForm = () => {
+    setActionFormData({
+      action_description: '',
+      action_type: '',
+      assigned_to: '',
+      created_by: 1,
+      created_date: getTodayForInput(),
+      due_date: '',
+      status: 'Pending',
+      priority: 'Medium',
+      notes: ''
+    });
+    setShowAddAction(false);
+    setEditingActionId(null);
+  };
+
+  // Add action
+  const handleAddAction = async (e) => {
+    e.preventDefault();
+    try {
+      await apiService.createFaultAction(fault.fault_id, {
+        ...actionFormData,
+        assigned_to: actionFormData.assigned_to ? parseInt(actionFormData.assigned_to) : null,
+        created_by: actionFormData.created_by ? parseInt(actionFormData.created_by) : null
+      });
+      await fetchActions();
+      await fetchLog();
+      resetActionForm();
+    } catch (err) {
+      console.error('Error adding action:', err);
+      alert('Failed to add action');
+    }
+  };
+
+  // Start editing action
+  const startEditAction = (action) => {
+    setEditingActionId(action.action_id);
+    setActionFormData({
+      action_description: action.action_description || '',
+      action_type: action.action_type || '',
+      assigned_to: action.assigned_to || '',
+      created_by: action.created_by || 1,
+      created_date: action.created_date || getTodayForInput(),
+      due_date: action.due_date || '',
+      status: action.status || 'Pending',
+      priority: action.priority || 'Medium',
+      notes: action.notes || ''
+    });
+    setShowAddAction(false);
+  };
+
+  // Save edited action
+  const handleSaveAction = async (actionId) => {
+    try {
+      await apiService.updateFaultAction(fault.fault_id, actionId, {
+        ...actionFormData,
+        assigned_to: actionFormData.assigned_to ? parseInt(actionFormData.assigned_to) : null
+      });
+      await fetchActions();
+      await fetchLog();
+      resetActionForm();
+    } catch (err) {
+      console.error('Error updating action:', err);
+      alert('Failed to update action');
+    }
+  };
+
+  // Delete action
+  const handleDeleteAction = async (actionId) => {
+    if (!window.confirm('Are you sure you want to delete this action?')) {
+      return;
+    }
+    
+    try {
+      await apiService.deleteFaultAction(fault.fault_id, actionId);
+      await fetchActions();
+      await fetchLog();
+    } catch (err) {
+      console.error('Error deleting action:', err);
+      alert('Failed to delete action');
+    }
+  };
+
+  // Get action status color
+  const getActionStatusColor = (status) => {
+    const colors = {
+      'Pending': 'bg-gray-100 text-gray-800',
+      'In Progress': 'bg-blue-100 text-blue-800',
+      'Completed': 'bg-green-100 text-green-800',
+      'Cancelled': 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Get priority color
+  const getPriorityColor = (priority) => {
+    const colors = {
+      'Low': 'bg-gray-100 text-gray-800',
+      'Medium': 'bg-yellow-100 text-yellow-800',
+      'High': 'bg-orange-100 text-orange-800',
+      'Critical': 'bg-red-100 text-red-800'
+    };
+    return colors[priority] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
+        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-xl font-bold text-gray-900">Fault Details</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -697,7 +843,7 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Header Section */}
+          {/* Fault Header */}
           <div className="border-b pb-4">
             <h3 className="text-2xl font-bold text-gray-900">{fault.title}</h3>
             <p className="text-gray-500 mt-1">{fault.fault_number}</p>
@@ -716,20 +862,21 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
                 onChange={(e) => onStatusUpdate(fault.fault_id, e.target.value)}
                 className="mt-1 text-sm font-semibold px-2 py-1 border border-gray-300 rounded bg-white"
               >
-                <option value="Open">Open</option>
+                <option value="Reported">Reported</option>
+                <option value="Investigating">Investigating</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Resolved">Resolved</option>
                 <option value="Closed">Closed</option>
-                <option value="Reopened">Reopened</option>
+                <option value="Deferred">Deferred</option>
               </select>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Category</p>
-              <p className="text-lg font-semibold text-gray-900">{fault.category || 'Not specified'}</p>
+              <p className="text-sm text-gray-600">Fault Type</p>
+              <p className="text-lg font-semibold text-gray-900">{fault.fault_type || 'Not specified'}</p>
             </div>
           </div>
 
-          {/* Details Section */}
+          {/* Details */}
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Description</label>
@@ -738,25 +885,30 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">Identified By</label>
-                <p className="mt-1 text-gray-900">{getPersonName(fault.identified_by)}</p>
+                <label className="text-sm font-medium text-gray-700">Reported By</label>
+                <p className="mt-1 text-gray-900">{getPersonName(fault.reported_by)}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Identified Date</label>
-                <p className="mt-1 text-gray-900">{formatDate(fault.identified_date)}</p>
+                <label className="text-sm font-medium text-gray-700">Reported Date</label>
+                <p className="mt-1 text-gray-900">{formatDate(fault.reported_date)}</p>
               </div>
             </div>
 
-            {(fault.resolved_by || fault.resolved_date) && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Resolved By</label>
-                  <p className="mt-1 text-gray-900">{fault.resolved_by ? getPersonName(fault.resolved_by) : 'Not resolved'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Resolved Date</label>
-                  <p className="mt-1 text-gray-900">{fault.resolved_date ? formatDate(fault.resolved_date) : 'N/A'}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Assigned To</label>
+                <p className="mt-1 text-gray-900">{getPersonName(fault.assigned_to)}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Target Fix Date</label>
+                <p className="mt-1 text-gray-900">{fault.target_fix_date ? formatDate(fault.target_fix_date) : 'Not set'}</p>
+              </div>
+            </div>
+
+            {fault.actual_fix_date && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Actual Fix Date</label>
+                <p className="mt-1 text-gray-900">{formatDate(fault.actual_fix_date)}</p>
               </div>
             )}
 
@@ -766,70 +918,359 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700">Corrective Action</label>
-              <p className="mt-1 text-gray-900 whitespace-pre-wrap">{fault.corrective_action || 'No action taken'}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-              <div>
-                <label className="font-medium">Created:</label>
-                <span className="ml-2">{formatDateTime(fault.created_at)}</span>
-              </div>
-              {fault.updated_at && (
-                <div>
-                  <label className="font-medium">Updated:</label>
-                  <span className="ml-2">{formatDateTime(fault.updated_at)}</span>
-                </div>
-              )}
+              <label className="text-sm font-medium text-gray-700">Resolution</label>
+              <p className="mt-1 text-gray-900 whitespace-pre-wrap">{fault.resolution || 'No resolution provided'}</p>
             </div>
           </div>
 
-          {/* Activity Log Section */}
-          <div className="border-t pt-4">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Activity Log</h4>
-            
-            {/* Add Log Entry Form */}
-            <form onSubmit={addLogEntry} className="mb-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newLogEntry}
-                  onChange={(e) => setNewLogEntry(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+          {/* FAULT ACTIONS SECTION - NEW! */}
+          <div className="border-t pt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Fault Actions</h4>
+              {!showAddAction && !editingActionId && (
                 <button
-                  type="submit"
-                  disabled={addingLog || !newLogEntry.trim()}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  onClick={() => setShowAddAction(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
                 >
-                  {addingLog ? 'Adding...' : 'Add'}
+                  <Plus className="w-4 h-4" />
+                  Add Action
                 </button>
-              </div>
-            </form>
+              )}
+            </div>
 
-            {/* Log Entries */}
-            {loadingLog ? (
-              <p className="text-center text-gray-500 py-4">Loading activity log...</p>
-            ) : log.length === 0 ? (
-              <p className="text-center text-gray-500 py-4">No activity yet.</p>
+            {/* Add Action Form */}
+            {showAddAction && (
+              <form onSubmit={handleAddAction} className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h5 className="font-semibold text-gray-900 mb-3">New Action</h5>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Action Description *</label>
+                    <textarea
+                      value={actionFormData.action_description}
+                      onChange={(e) => setActionFormData({ ...actionFormData, action_description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                      rows="2"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                      <input
+                        type="text"
+                        value={actionFormData.action_type}
+                        onChange={(e) => setActionFormData({ ...actionFormData, action_type: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                        placeholder="e.g., Technical Fix, Investigation"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                      <select
+                        value={actionFormData.assigned_to}
+                        onChange={(e) => setActionFormData({ ...actionFormData, assigned_to: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                      >
+                        <option value="">Not assigned</option>
+                        {people.map(person => (
+                          <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                      <input
+                        type="date"
+                        value={actionFormData.due_date}
+                        onChange={(e) => setActionFormData({ ...actionFormData, due_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <select
+                        value={actionFormData.status}
+                        onChange={(e) => setActionFormData({ ...actionFormData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={actionFormData.priority}
+                      onChange={(e) => setActionFormData({ ...actionFormData, priority: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea
+                      value={actionFormData.notes}
+                      onChange={(e) => setActionFormData({ ...actionFormData, notes: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                      rows="2"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={resetActionForm}
+                      className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                    >
+                      Add Action
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {/* Actions List */}
+            {loadingActions ? (
+              <p className="text-center text-gray-500 py-4">Loading actions...</p>
+            ) : actions.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">No actions yet. Add an action to get started.</p>
             ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-3">
+                {actions.map((action) => (
+                  <div key={action.action_id} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300">
+                    {editingActionId === action.action_id ? (
+                      // Edit mode
+                      <form onSubmit={(e) => { e.preventDefault(); handleSaveAction(action.action_id); }} className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Action Description *</label>
+                          <textarea
+                            value={actionFormData.action_description}
+                            onChange={(e) => setActionFormData({ ...actionFormData, action_description: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            rows="2"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
+                            <input
+                              type="text"
+                              value={actionFormData.action_type}
+                              onChange={(e) => setActionFormData({ ...actionFormData, action_type: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                            <select
+                              value={actionFormData.assigned_to}
+                              onChange={(e) => setActionFormData({ ...actionFormData, assigned_to: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            >
+                              <option value="">Not assigned</option>
+                              {people.map(person => (
+                                <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                            <input
+                              type="date"
+                              value={actionFormData.due_date}
+                              onChange={(e) => setActionFormData({ ...actionFormData, due_date: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select
+                              value={actionFormData.status}
+                              onChange={(e) => setActionFormData({ ...actionFormData, status: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Cancelled">Cancelled</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                          <select
+                            value={actionFormData.priority}
+                            onChange={(e) => setActionFormData({ ...actionFormData, priority: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                          >
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Critical">Critical</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                          <textarea
+                            value={actionFormData.notes}
+                            onChange={(e) => setActionFormData({ ...actionFormData, notes: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                            rows="2"
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={resetActionForm}
+                            className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                          >
+                            <Check className="w-4 h-4 inline mr-1" />
+                            Save
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      // View mode
+                      <div>
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{action.action_description}</p>
+                            {action.action_type && (
+                              <p className="text-sm text-gray-600 mt-1">Type: {action.action_type}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <button
+                              onClick={() => startEditAction(action)}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="Edit Action"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAction(action.action_id)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                              title="Delete Action"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-600">Assigned:</span>
+                            <p className="font-medium text-gray-900">{getPersonName(action.assigned_to)}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Due:</span>
+                            <p className="font-medium text-gray-900">{action.due_date ? formatDate(action.due_date) : 'No due date'}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Status:</span>
+                            <p><span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionStatusColor(action.status)}`}>
+                              {action.status}
+                            </span></p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Priority:</span>
+                            <p><span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(action.priority)}`}>
+                              {action.priority}
+                            </span></p>
+                          </div>
+                        </div>
+
+                        {action.notes && (
+                          <div className="mt-3 pt-3 border-t">
+                            <span className="text-sm text-gray-600">Notes:</span>
+                            <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap">{action.notes}</p>
+                          </div>
+                        )}
+
+                        {action.completed_date && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            Completed: {formatDate(action.completed_date)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* AUDIT TRAIL SECTION - READ ONLY */}
+          <div className="border-t pt-6">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Audit Trail</h4>
+            
+            {loadingLog ? (
+              <p className="text-center text-gray-500 py-4">Loading audit trail...</p>
+            ) : log.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">No activity recorded yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {log.map((entry) => (
                   <div key={entry.log_id} className="border-l-4 border-red-400 bg-gray-50 p-3 rounded">
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-2 text-sm">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                        <div className="flex items-center gap-2 text-gray-600 mb-1">
                           <span className="font-medium">{getPersonName(entry.logged_by)}</span>
                           <span>•</span>
                           <span>{formatDateTime(entry.log_date)}</span>
-                          {entry.log_type && entry.log_type !== 'Comment' && (
+                          {entry.log_type && (
                             <>
                               <span>•</span>
-                              <span className="text-red-600 font-medium">{entry.log_type}</span>
+                              <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs font-medium">
+                                {entry.log_type}
+                              </span>
                             </>
                           )}
                         </div>
+                        
+                        {entry.log_type === 'Status Change' && entry.previous_status && entry.new_status && (
+                          <p className="text-gray-900">
+                            Status changed from <span className="font-semibold">{entry.previous_status}</span> to <span className="font-semibold">{entry.new_status}</span>
+                          </p>
+                        )}
+                        
                         {entry.comments && (
                           <p className="text-gray-900 whitespace-pre-wrap">{entry.comments}</p>
                         )}
@@ -841,13 +1282,13 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-between gap-3 pt-4 border-t">
+          {/* FOOTER BUTTONS */}
+          <div className="flex justify-between gap-3 pt-6 border-t">
             <button
               onClick={() => onDelete(fault.fault_id)}
-              className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
+              className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 flex items-center gap-2"
             >
-              <Trash2 className="w-4 h-4 inline mr-2" />
+              <Trash2 className="w-4 h-4" />
               Delete Fault
             </button>
             <div className="flex gap-3">
@@ -859,9 +1300,9 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
               </button>
               <button
                 onClick={onEdit}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
               >
-                <Edit className="w-4 h-4 inline mr-2" />
+                <Edit className="w-4 h-4" />
                 Edit Fault
               </button>
             </div>
@@ -872,20 +1313,21 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
   );
 }
 
-// Edit Fault Modal Component
+// Edit Fault Modal
 function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    severity: 'Medium',
-    status: 'Open',
-    category: '',
-    identified_by: '',
-    identified_date: '',
-    resolved_by: '',
-    resolved_date: '',
+    severity: 'Major',
+    status: 'Reported',
+    fault_type: '',
+    assigned_to: '',
+    reported_by: '',
+    reported_date: getTodayForInput(),
+    target_fix_date: null,
+    actual_fix_date: null,
     root_cause: '',
-    corrective_action: '',
+    resolution: '',
     project_id: ''
   });
   const [loading, setLoading] = useState(false);
@@ -895,15 +1337,16 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
       setFormData({
         title: fault.title || '',
         description: fault.description || '',
-        severity: fault.severity || 'Medium',
-        status: fault.status || 'Open',
-        category: fault.category || '',
-        identified_by: fault.identified_by || '',
-        identified_date: fault.identified_date || '',
-        resolved_by: fault.resolved_by || '',
-        resolved_date: fault.resolved_date || '',
+        severity: fault.severity || 'Major',
+        status: fault.status || 'Reported',
+        fault_type: fault.fault_type || '',
+        assigned_to: fault.assigned_to || '',
+        reported_by: fault.reported_by || '',
+        reported_date: fault.reported_date || '',
+        target_fix_date: fault.target_fix_date || null,
+        actual_fix_date: fault.actual_fix_date || null,
         root_cause: fault.root_cause || '',
-        corrective_action: fault.corrective_action || '',
+        resolution: fault.resolution || '',
         project_id: fault.project_id || ''
       });
     }
@@ -916,15 +1359,15 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
     try {
       await apiService.updateFault(fault.fault_id, {
         ...formData,
-        identified_by: formData.identified_by ? parseInt(formData.identified_by) : null,
-        resolved_by: formData.resolved_by ? parseInt(formData.resolved_by) : null,
+        reported_by: formData.reported_by ? parseInt(formData.reported_by) : null,
+        assigned_to: formData.assigned_to ? parseInt(formData.assigned_to) : null,
         project_id: formData.project_id ? parseInt(formData.project_id) : undefined,
         updated_by: 1
       });
       onSuccess();
     } catch (err) {
       console.error('Error updating fault:', err);
-      alert('Failed to update fault');
+      alert('Failed to update fault: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -933,9 +1376,9 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
   if (!show || !fault) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[95vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-900">Edit Fault</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
@@ -953,9 +1396,7 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
               >
                 <option value="">Select project...</option>
                 {projects.map(project => (
-                  <option key={project.project_id} value={project.project_id}>
-                    {project.project_name}
-                  </option>
+                  <option key={project.project_id} value={project.project_id}>{project.project_name}</option>
                 ))}
               </select>
             </div>
@@ -990,11 +1431,10 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
                 onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               >
-                <option value="Very Low">Very Low</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+                <option value="Minor">Minor</option>
+                <option value="Major">Major</option>
                 <option value="Critical">Critical</option>
+                <option value="Blocking">Blocking</option>
               </select>
             </div>
 
@@ -1005,79 +1445,116 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               >
-                <option value="Open">Open</option>
+                <option value="Reported">Reported</option>
+                <option value="Investigating">Investigating</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Resolved">Resolved</option>
                 <option value="Closed">Closed</option>
-                <option value="Reopened">Reopened</option>
+                <option value="Deferred">Deferred</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fault Type</label>
             <input
               type="text"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              value={formData.fault_type}
+              onChange={(e) => setFormData({ ...formData, fault_type: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Identified By</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reported By</label>
               <select
-                value={formData.identified_by}
-                onChange={(e) => setFormData({ ...formData, identified_by: e.target.value })}
+                value={formData.reported_by}
+                onChange={(e) => setFormData({ ...formData, reported_by: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               >
                 <option value="">Select person...</option>
                 {people.map(person => (
-                  <option key={person.person_id} value={person.person_id}>
-                    {person.full_name}
-                  </option>
+                  <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
                 ))}
               </select>
             </div>
+            
+            
+            
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Identified Date</label>
-              <input
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reported Date</label>
+               <input
                 type="date"
-                value={formData.identified_date}
-                onChange={(e) => setFormData({ ...formData, identified_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                value={formData.reported_date || ''} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If cleared, snap back to today's date string
+                    reported_date: val === "" ? getTodayForInput() : val 
+                  });
+                }}
+                className="..."
+                required
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Resolved By</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
               <select
-                value={formData.resolved_by}
-                onChange={(e) => setFormData({ ...formData, resolved_by: e.target.value })}
+                value={formData.assigned_to}
+                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               >
-                <option value="">Not resolved</option>
+                <option value="">Not assigned</option>
                 {people.map(person => (
-                  <option key={person.person_id} value={person.person_id}>
-                    {person.full_name}
-                  </option>
+                  <option key={person.person_id} value={person.person_id}>{person.full_name}</option>
                 ))}
               </select>
             </div>
-
+           
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Resolved Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Target Fix Date</label>
               <input
                 type="date"
-                value={formData.resolved_date}
-                onChange={(e) => setFormData({ ...formData, resolved_date: e.target.value })}
+                // Use an empty string for the value if it's null, so the input doesn't crash
+                value={formData.target_fix_date || ''} 
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If the user cleared the date, set it to null instead of ""
+                    target_fix_date: val === "" ? null : val 
+                  });
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               />
             </div>
+                    
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Actual Fix Date</label>
+            <input
+              type="date"
+              // We use || '' to ensure the input component doesn't get 'null', 
+              // which would make it an "uncontrolled" component in React.
+              value={formData.actual_fix_date || ''} 
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ 
+                  ...formData, 
+                  // Logic: If user clears the box, send null to the DB. 
+                  // Otherwise, send the date string (YYYY-MM-DD).
+                  actual_fix_date: val === "" ? null : val 
+                });
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+            />
           </div>
 
           <div>
@@ -1091,10 +1568,10 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Corrective Action</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Resolution</label>
             <textarea
-              value={formData.corrective_action}
-              onChange={(e) => setFormData({ ...formData, corrective_action: e.target.value })}
+              value={formData.resolution}
+              onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               rows="2"
             />

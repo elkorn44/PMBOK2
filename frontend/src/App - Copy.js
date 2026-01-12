@@ -7,7 +7,6 @@ import { ProjectProvider, useProject } from './context/ProjectContext';
 import Dashboard from './pages/Dashboard';
 import Issues from './pages/Issues';
 import Risks from './pages/Risks';
-import Faults from './pages/Faults';
 
 // Navigation component with project selector
 function Navigation() {
@@ -39,9 +38,6 @@ function Navigation() {
               </Link>
               <Link to="/risks" className={linkClass('/risks')}>
                 Risks
-              </Link>
-              <Link to="/faults" className={linkClass('/faults')}>
-                Faults
               </Link>
             </div>
           </div>
@@ -85,7 +81,6 @@ function AppContent() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/issues" element={<Issues />} />
           <Route path="/risks" element={<Risks />} />
-          <Route path="/faults" element={<Faults />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

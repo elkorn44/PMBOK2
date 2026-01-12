@@ -191,6 +191,31 @@ export const deleteFault = async (id) => {
   });
 };
 
+// Fault Actions - NEW!
+export const getFaultActions = async (faultId) => {
+  return fetchAPI(`/faults/${faultId}/actions`);
+};
+
+export const createFaultAction = async (faultId, data) => {
+  return fetchAPI(`/faults/${faultId}/actions`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateFaultAction = async (faultId, actionId, data) => {
+  return fetchAPI(`/faults/${faultId}/actions/${actionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteFaultAction = async (faultId, actionId) => {
+  return fetchAPI(`/faults/${faultId}/actions/${actionId}`, {
+    method: 'DELETE',
+  });
+};
+
 // Fault Log/Audit Trail
 export const getFaultLog = async (faultId) => {
   return fetchAPI(`/faults/${faultId}/log`);
@@ -352,27 +377,6 @@ export const createEscalation = async (data) => {
 };
 
 // =====================================================
-// FAULTS
-// =====================================================
-
-export const getFaults = async (filters = {}) => {
-  const params = new URLSearchParams(filters);
-  const query = params.toString() ? `?${params}` : '';
-  return fetchAPI(`/faults${query}`);
-};
-
-export const getFaultById = async (id) => {
-  return fetchAPI(`/faults/${id}`);
-};
-
-export const createFault = async (data) => {
-  return fetchAPI('/faults', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
-
-// =====================================================
 // REPORTS
 // =====================================================
 
@@ -422,12 +426,16 @@ const apiService = {
   getIssueLog,
   addIssueLogEntry,
   
-  // Faults
+  // Faults - UPDATED WITH ACTIONS!
   getFaults,
   getFaultById,
   createFault,
   updateFault,
   deleteFault,
+  getFaultActions,        // NEW!
+  createFaultAction,      // NEW!
+  updateFaultAction,      // NEW!
+  deleteFaultAction,      // NEW!
   getFaultLog,
   addFaultLogEntry,
   
@@ -458,11 +466,6 @@ const apiService = {
   getEscalations,
   getEscalationById,
   createEscalation,
-  
-  // Faults
-  getFaults,
-  getFaultById,
-  createFault,
   
   // Reports
   getExecutiveSummary,

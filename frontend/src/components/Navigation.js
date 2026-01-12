@@ -13,7 +13,7 @@ function Navigation() {
     // Add more when ready:
     // { path: '/changes', label: 'Changes', icon: GitBranch },
     // { path: '/escalations', label: 'Escalations', icon: Zap },
-    // { path: '/faults', label: 'Faults', icon: Bug },
+    { path: '/faults', label: 'Faults', icon: Bug },
   ];
   
   const isActive = (path) => location.pathname === path;
