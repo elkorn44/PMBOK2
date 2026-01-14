@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, Plus, Search, X, Eye, Edit, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { AlertTriangle, Plus, Search, X, Eye, Edit, Trash2, CheckCircle, Clock , AlertCircle, Check, XCircle} from 'lucide-react';
 import apiService from '../services/api';
 import { useProject } from '../context/ProjectContext';
 import { formatDate, formatDateTime, getTodayForInput, getFutureDateForInput } from '../utils/dateFormat';
@@ -557,7 +557,7 @@ function CreateRiskModal({ show, people, projects, selectedProject, onClose, onS
     identified_by: '',
     owner: '',
     identified_date: getTodayForInput(),
-    review_date: '',
+    review_date: null,
     mitigation_strategy: '',
     contingency_plan: '',
     project_id: selectedProject || ''
@@ -603,7 +603,7 @@ function CreateRiskModal({ show, people, projects, selectedProject, onClose, onS
         identified_by: '',
         owner: '',
         identified_date: getTodayForInput(),
-        review_date: '',
+        review_date: null,
         mitigation_strategy: '',
         contingency_plan: '',
         project_id: selectedProject || (projects.length === 1 ? projects[0].project_id : '')
@@ -764,9 +764,16 @@ function CreateRiskModal({ show, people, projects, selectedProject, onClose, onS
               <label className="block text-sm font-medium text-gray-700 mb-1">Identified Date *</label>
               <input
                 type="date"
-                value={formData.identified_date}
-                onChange={(e) => setFormData({ ...formData, identified_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                value={formData.identified_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If cleared, snap back to today's date string
+                    identified_date: val === "" ? getTodayForInput() : val 
+                  });
+                }}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white"
                 required
               />
             </div>
@@ -775,9 +782,16 @@ function CreateRiskModal({ show, people, projects, selectedProject, onClose, onS
               <label className="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
               <input
                 type="date"
-                value={formData.review_date}
-                onChange={(e) => setFormData({ ...formData, review_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                value={formData.review_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  // 2. The Safety Valve for the Database: if empty, send null
+                  setFormData({ 
+                    ...formData, 
+                    review_date: val === "" ? null : val 
+                  });
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               />
             </div>
           </div>
@@ -946,13 +960,48 @@ function RiskDetailModal({ risk, people, onClose, onStatusUpdate, onRequestClosu
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-900">Risk Details</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+            {/* Header - Now with Action Icons */}
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-50">
+            {/* Left: Title and Fault ID */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Risk Details</h2>
+              <p className="text-xs text-gray-500">{risk.risk_number}</p>
+            </div>
 
+            {/* Right: Actions Group */}
+            <div className="flex items-center gap-2">
+              {/* Edit Pencil */}
+              <button 
+                onClick={onEdit} 
+                title="Edit Risk"
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Edit className="w-5 h-5" />
+                <span className="text-sm font-medium hidden sm:inline">Edit</span>
+              </button>
+
+              {/* Delete Bin */}
+              <button 
+                onClick={() => onDelete(risk.risk_id)} 
+                title="Delete Risk"
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+
+              {/* Vertical Divider */}
+              <div className="w-px h-6 bg-gray-200 mx-1" />
+
+              {/* Close X */}
+              <button 
+                onClick={onClose} 
+                title="Close"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
         <div className="p-6 space-y-6">
           {/* Header Section */}
           <div className="border-b pb-4">
@@ -1245,8 +1294,8 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
     status: 'Identified',
     identified_by: '',
     owner: '',
-    identified_date: '',
-    review_date: '',
+    identified_date: getTodayForInput(),
+    review_date: null,
     mitigation_strategy: '',
     contingency_plan: '',
     project_id: ''
@@ -1264,8 +1313,8 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
         status: risk.status || 'Identified',
         identified_by: risk.identified_by || '',
         owner: risk.owner || '',
-        identified_date: risk.identified_date || '',
-        review_date: risk.review_date || '',
+        identified_date: risk.identified_date || null,
+        review_date: risk.review_date || null,
         mitigation_strategy: risk.mitigation_strategy || '',
         contingency_plan: risk.contingency_plan || '',
         project_id: risk.project_id || ''
@@ -1306,14 +1355,35 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        {/* Header - Now with Sticky Save/Cancel Icons */}
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-xl font-bold text-gray-900">Edit Risk</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* The Save (Check) Icon */}
+            <button 
+              type="submit" 
+              form="edit-risk-form" // This connects to the form ID below
+              disabled={loading}
+              className="p-1 hover:bg-green-50 rounded-full transition-colors disabled:opacity-50"
+              title="Save Changes"
+            >
+              <Check className={`w-6 h-6 ${loading ? 'text-gray-400' : 'text-green-600'}`} />
+            </button>
+
+            {/* The Cancel (X) Icon */}
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title="Cancel"
+            >
+              <X className="w-6 h-6 text-gray-400" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form id="edit-risk-form" onSubmit={handleSubmit} className="p-6 space-y-4">
           {projects.length > 1 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
@@ -1452,9 +1522,17 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">Identified Date</label>
               <input
                 type="date"
-                value={formData.identified_date}
-                onChange={(e) => setFormData({ ...formData, identified_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                value={formData.identified_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If cleared, snap back to today's date string
+                    identified_date: val === "" ? getTodayForInput() : val 
+                  });
+                }}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 sm:text-sm bg-white"
+                required
               />
             </div>
 
@@ -1462,9 +1540,16 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">Review Date</label>
               <input
                 type="date"
-                value={formData.review_date}
-                onChange={(e) => setFormData({ ...formData, review_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                value={formData.review_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({ 
+                    ...formData, 
+                    // If the user cleared the date, set it to null instead of ""
+                    review_date: val === "" ? null : val 
+                  });
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               />
             </div>
           </div>
@@ -1488,7 +1573,7 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
               rows="3"
             />
           </div>
-
+          
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"

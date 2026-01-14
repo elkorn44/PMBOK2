@@ -18,6 +18,7 @@ function Dashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
+    console.count("FETCH TRIGGERED"); // This will show in F12 console
     try {
       setLoading(true);
       const data = await apiService.getDashboard();

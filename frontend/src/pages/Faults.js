@@ -834,14 +834,50 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-900">Fault Details</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+      
+        {/* Header - Now with Action Icons */}
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-50">
+          {/* Left: Title and Fault ID */}
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Fault Details</h2>
+            <p className="text-xs text-gray-500">{fault.fault_number}</p>
+          </div>
 
+          {/* Right: Actions Group */}
+          <div className="flex items-center gap-2">
+            {/* Edit Pencil */}
+            <button 
+              onClick={onEdit} 
+              title="Edit Fault"
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Edit className="w-5 h-5" />
+              <span className="text-sm font-medium hidden sm:inline">Edit</span>
+            </button>
+
+            {/* Delete Bin */}
+            <button 
+              onClick={() => onDelete(fault.fault_id)} 
+              title="Delete Fault"
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+
+            {/* Vertical Divider */}
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+            {/* Close X */}
+            <button 
+              onClick={onClose} 
+              title="Close"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+        
         <div className="p-6 space-y-6">
           {/* Fault Header */}
           <div className="border-b pb-4">
@@ -1281,32 +1317,6 @@ function FaultDetailModal({ fault, people, onClose, onStatusUpdate, onDelete, on
               </div>
             )}
           </div>
-
-          {/* FOOTER BUTTONS */}
-          <div className="flex justify-between gap-3 pt-6 border-t">
-            <button
-              onClick={() => onDelete(fault.fault_id)}
-              className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Fault
-            </button>
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={onEdit}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
-              >
-                <Edit className="w-4 h-4" />
-                Edit Fault
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1378,15 +1388,36 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[95vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
+        {/* Header - Now with Sticky Save/Cancel Icons */}
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
           <h2 className="text-xl font-bold text-gray-900">Edit Fault</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-6 h-6" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* The Save (Check) Icon */}
+            <button 
+              type="submit" 
+              form="edit-fault-form" // This connects to the form ID below
+              disabled={loading}
+              className="p-1 hover:bg-green-50 rounded-full transition-colors disabled:opacity-50"
+              title="Save Changes"
+            >
+              <Check className={`w-6 h-6 ${loading ? 'text-gray-400' : 'text-green-600'}`} />
+            </button>
+
+            {/* The Cancel (X) Icon */}
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title="Cancel"
+            >
+              <X className="w-6 h-6 text-gray-400" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {projects.length > 1 && (
+        <form id="edit-fault-form" onSubmit={handleSubmit} className="p-6 space-y-4">
+        {projects.length > 1 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
               <select
@@ -1575,23 +1606,6 @@ function EditFaultModal({ show, fault, people, projects, onClose, onSuccess }) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
               rows="2"
             />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
           </div>
         </form>
       </div>
