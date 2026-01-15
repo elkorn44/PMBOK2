@@ -1253,30 +1253,7 @@ function RiskDetailModal({ risk, people, onClose, onStatusUpdate, onRequestClosu
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between gap-3 pt-4 border-t">
-            <button
-              onClick={() => onDelete(risk.risk_id)}
-              className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4 inline mr-2" />
-              Delete Risk
-            </button>
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Close
-              </button>
-              <button
-                onClick={onEdit}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-              >
-                <Edit className="w-4 h-4 inline mr-2" />
-                Edit Risk
-              </button>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>
@@ -1301,7 +1278,6 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
     project_id: ''
   });
   const [loading, setLoading] = useState(false);
-
   useEffect(() => {
     if (risk) {
       setFormData({
@@ -1574,22 +1550,7 @@ function EditRiskModal({ show, risk, people, projects, onClose, onSuccess }) {
             />
           </div>
           
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+          
         </form>
       </div>
     </div>
