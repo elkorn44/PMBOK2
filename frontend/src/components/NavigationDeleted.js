@@ -11,8 +11,8 @@ function Navigation() {
     { path: '/issues', label: 'Issues', icon: AlertCircle },
     { path: '/risks', label: 'Risks', icon: AlertTriangle },
     // Add more when ready:
-    // { path: '/changes', label: 'Changes', icon: GitBranch },
-    // { path: '/escalations', label: 'Escalations', icon: Zap },
+    { path: '/changes', label: 'Changes', icon: GitBranch },
+    { path: '/escalations', label: 'Escalations', icon: Zap },    
     { path: '/faults', label: 'Faults', icon: Bug },
   ];
   

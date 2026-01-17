@@ -75,15 +75,39 @@ export const deleteProject = async (id) => {
 // =====================================================
 // PEOPLE
 // =====================================================
-
+// Get all people with optional filters
 export const getPeople = async (filters = {}) => {
   const params = new URLSearchParams(filters);
   const query = params.toString() ? `?${params}` : '';
   return fetchAPI(`/people${query}`);
 };
 
+// Get person by ID (includes workload and ownership data)
 export const getPersonById = async (id) => {
   return fetchAPI(`/people/${id}`);
+};
+
+// Create new person
+export const createPerson = async (data) => {
+  return fetchAPI('/people', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+// Update person
+export const updatePerson = async (id, data) => {
+  return fetchAPI(`/people/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+// Delete person (actually deactivates - sets is_active = false)
+export const deletePerson = async (id) => {
+  return fetchAPI(`/people/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 // =====================================================
@@ -325,6 +349,7 @@ export const rejectRiskClosure = async (riskId, data) => {
 // CHANGES
 // =====================================================
 
+// CHANGES CRUD
 export const getChanges = async (filters = {}) => {
   const params = new URLSearchParams(filters);
   const query = params.toString() ? `?${params}` : '';
@@ -355,6 +380,80 @@ export const deleteChange = async (id) => {
   });
 };
 
+// CHANGE ACTIONS
+export const getChangeActions = async (changeId) => {
+  return fetchAPI(`/changes/${changeId}/actions`);
+};
+
+export const createChangeAction = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/actions`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateChangeAction = async (changeId, actionId, data) => {
+  return fetchAPI(`/changes/${changeId}/actions/${actionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteChangeAction = async (changeId, actionId) => {
+  return fetchAPI(`/changes/${changeId}/actions/${actionId}`, {
+    method: 'DELETE',
+  });
+};
+
+// CHANGE LOG
+export const getChangeLog = async (changeId) => {
+  return fetchAPI(`/changes/${changeId}/log`);
+};
+
+// WORKFLOW ENDPOINTS
+export const requestApproval = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/request-approval`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const approveChange = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const rejectChange = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const requestClosure = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/request-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const approveClosure = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/approve-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const rejectClosure = async (changeId, data) => {
+  return fetchAPI(`/changes/${changeId}/reject-closure`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+
 // =====================================================
 // ESCALATIONS
 // =====================================================
@@ -376,22 +475,189 @@ export const createEscalation = async (data) => {
   });
 };
 
+export const updateEscalation = async (id, data) => {
+  return fetchAPI(`/escalations/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteEscalation = async (id) => {
+  return fetchAPI(`/escalations/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+// Escalation Actions
+export const getEscalationActions = async (escalationId) => {
+  return fetchAPI(`/escalations/${escalationId}/actions`);
+};
+
+export const createEscalationAction = async (escalationId, data) => {
+  return fetchAPI(`/escalations/${escalationId}/actions`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateEscalationAction = async (escalationId, actionId, data) => {
+  return fetchAPI(`/escalations/${escalationId}/actions/${actionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteEscalationAction = async (escalationId, actionId) => {
+  return fetchAPI(`/escalations/${escalationId}/actions/${actionId}`, {
+    method: 'DELETE',
+  });
+};
+
+// Escalation Log
+export const getEscalationLog = async (escalationId) => {
+  return fetchAPI(`/escalations/${escalationId}/log`);
+};
+
+export const addEscalationLogEntry = async (escalationId, data) => {
+  return fetchAPI(`/escalations/${escalationId}/log`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
 // =====================================================
-// REPORTS
+// ACTION LOGS API METHODS
 // =====================================================
 
+// ACTION LOG HEADERS (Main logs)
+export const getActionLogs = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/action-logs${query}`);
+};
+
+export const getActionLogById = async (id) => {
+  return fetchAPI(`/action-logs/${id}`);
+};
+
+export const createActionLog = async (data) => {
+  return fetchAPI('/action-logs', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateActionLog = async (id, data) => {
+  return fetchAPI(`/action-logs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteActionLog = async (id) => {
+  return fetchAPI(`/action-logs/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+// ACTION LOG ITEMS (Individual actions)
+export const getActionLogItems = async (logId) => {
+  return fetchAPI(`/action-logs/${logId}/items`);
+};
+
+export const createActionLogItem = async (logId, data) => {
+  return fetchAPI(`/action-logs/${logId}/items`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateActionLogItem = async (logId, itemId, data) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteActionLogItem = async (logId, itemId) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}`, {
+    method: 'DELETE',
+  });
+};
+
+// ACTION ITEM REQUIREMENTS (Checklist for each item)
+export const getActionItemRequirements = async (logId, itemId) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}/requirements`);
+};
+
+export const createActionItemRequirement = async (logId, itemId, data) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}/requirements`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+};
+
+export const updateActionItemRequirement = async (logId, itemId, reqId, data) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}/requirements/${reqId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+export const deleteActionItemRequirement = async (logId, itemId, reqId) => {
+  return fetchAPI(`/action-logs/${logId}/items/${itemId}/requirements/${reqId}`, {
+    method: 'DELETE',
+  });
+};
+
+// REPORTS
 export const getExecutiveSummary = async () => {
   return fetchAPI('/reports/executive-summary');
 };
 
-export const getRiskHeatMap = async (projectId = null) => {
-  const query = projectId ? `?project_id=${projectId}` : '';
-  return fetchAPI(`/reports/risk-heat-map${query}`);
+export const getProjectSummaryReport = async (projectId) => {
+  return fetchAPI(`/reports/project-summary/${projectId}`);
 };
 
-export const getIssueAgingReport = async (projectId = null) => {
-  const query = projectId ? `?project_id=${projectId}` : '';
+export const getRiskHeatMap = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/reports/risk-heatmap${query}`);
+};
+
+export const getIssueAgingReport = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
   return fetchAPI(`/reports/issue-aging${query}`);
+};
+
+export const getChangeImpactAnalysis = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/reports/change-impact${query}`);
+};
+
+export const getProjectHealthReport = async (projectId) => {
+  return fetchAPI(`/reports/project-health/${projectId}`);
+};
+
+export const getActionItemsReport = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/reports/action-items${query}`);
+};
+
+export const getPendingApprovalsReport = async () => {
+  return fetchAPI('/reports/pending-approvals');
+};
+
+export const getTeamWorkloadReport = async () => {
+  return fetchAPI('/reports/team-workload');
+};
+
+export const getTrendAnalysis = async (filters = {}) => {
+  const params = new URLSearchParams(filters);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI(`/reports/trend-analysis${query}`);
 };
 
 // =====================================================
@@ -410,8 +676,11 @@ const apiService = {
   deleteProject,
   
   // People
-  getPeople,
+ getPeople,
   getPersonById,
+  createPerson,
+  updatePerson,
+  deletePerson,
   
   // Issues
   getIssues,
@@ -461,16 +730,57 @@ const apiService = {
   createChange,
   updateChange,
   deleteChange,
+  getChangeActions,
+  createChangeAction,
+  updateChangeAction,
+  deleteChangeAction,
+  getChangeLog,
+  requestApproval,
+  approveChange,
+  rejectChange,
+  requestClosure,
+  approveClosure,
+  rejectClosure,
   
   // Escalations
   getEscalations,
   getEscalationById,
   createEscalation,
+  updateEscalation,      
+  deleteEscalation,
+  getEscalationActions,
+  createEscalationAction,
+  updateEscalationAction,
+  deleteEscalationAction,
+  getEscalationLog,
+  addEscalationLogEntry,
   
   // Reports
   getExecutiveSummary,
+  getProjectSummaryReport,
   getRiskHeatMap,
   getIssueAgingReport,
+  getChangeImpactAnalysis,
+  getProjectHealthReport,
+  getActionItemsReport,
+  getPendingApprovalsReport,
+  getTeamWorkloadReport,
+  getTrendAnalysis,
+  
+  // Action Logs
+  getActionLogs,
+  getActionLogById,
+  createActionLog,
+  updateActionLog,
+  deleteActionLog,
+  getActionLogItems,
+  createActionLogItem,
+  updateActionLogItem,
+  deleteActionLogItem,
+  getActionItemRequirements,
+  createActionItemRequirement,
+  updateActionItemRequirement,
+  deleteActionItemRequirement,
 };
 
 export default apiService;
