@@ -14,6 +14,7 @@ import ActionLogs from './pages/ActionLogs';
 import Projects from './pages/Projects';
 import People from './pages/People';
 import Reports from './pages/Reports';
+import RiskApprovals from './pages/RiskApprovals';
 
 // Navigation component with project selector
 function Navigation() {
@@ -76,6 +77,9 @@ function Navigation() {
                 </Link>
                 <Link to="/people" className={linkClass('/people')} onClick={handleLinkClick}>
                   <span className="whitespace-nowrap">People</span>
+                </Link>
+                <Link to="/risk-approvals" className={linkClass('/people')} onClick={handleLinkClick}>
+                  <span className="whitespace-nowrap">Risk Approve</span>
                 </Link>
                 <Link to="/reports" className={linkClass('/reports')} onClick={handleLinkClick}>
                   <span className="whitespace-nowrap">Reports</span>
@@ -194,6 +198,17 @@ function Navigation() {
               Faults
             </Link>
             <Link 
+              to="/risk-approvals" 
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                isActive('/risk-approvals') 
+                  ? 'bg-orange-50 text-orange-600' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+              onClick={handleLinkClick}
+            >
+              Risk Approvals
+            </Link>
+            <Link 
               to="/changes" 
               className={`block px-3 py-2 rounded-md text-base font-medium ${
                 isActive('/changes') 
@@ -257,6 +272,7 @@ function AppContent() {
           <Route path="/people" element={<People />} />
           <Route path="/issues" element={<Issues />} />
           <Route path="/risks" element={<Risks />} />
+          <Route path="/risk-approvals" element={<RiskApprovals />} />
           <Route path="/changes" element={<Changes />} /> 
           <Route path="/escalations" element={<Escalations />} />
           <Route path="/action-logs" element={<ActionLogs />} />
