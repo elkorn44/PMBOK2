@@ -2,8 +2,8 @@
 # PMBOK Project Management - Environment Configuration
 # =====================================================
 
-# Database Configuration (MariaDB on pc)
-DB_HOST=localhost
+# Database Configuration (MariaDB on QNAP)
+DB_HOST=192.168.68.100
 DB_PORT=3307
 DB_NAME=pmbok_pm
 DB_USER=root
