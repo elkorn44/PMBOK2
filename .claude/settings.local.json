@@ -3,7 +3,14 @@
     "allow": [
       "Bash(head:*)",
       "Bash(node:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(cd /c/Projects/pmbok-app/frontend && npm uninstall react-scripts 2>&1)",
+      "Bash(cd /c/Projects/pmbok-app/frontend && npm install --save-dev vite @vitejs/plugin-react vitest jsdom 2>&1)",
+      "Bash(cd /c/Projects/pmbok-app/frontend && npm run build 2>&1)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(curl:*)"
     ]
   }
 }
