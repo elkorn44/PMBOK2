@@ -1,7 +1,7 @@
 // frontend/src/services/apiService.js
 // Centralized API service for all backend communication
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Helper function for fetch requests
 const fetchAPI = async (endpoint, options = {}) => {
